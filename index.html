@@ -54,7 +54,10 @@
             const [items, setItems] = useState([]);
             const [showModal, setShowModal] = useState(false);
             const [loading, setLoading] = useState(true);
-            const [formData, setFormData] = useState({ title: '', loc: '', desc: '', type: 'found' });
+            const [formData, setFormData] = useState({ 
+                title: '', loc: '', desc: '', type: 'found',
+                ig: '', wa: '' 
+            });
 
             useEffect(() => {
                 const unsubscribe = db.collection('reports')
@@ -79,15 +82,14 @@
                         time: new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
                     });
                     setShowModal(false);
-                    setFormData({ title: '', loc: '', desc: '', type: 'found' });
+                    setFormData({ title: '', loc: '', desc: '', type: 'found', ig: '', wa: '' });
                 } catch (err) {
                     alert("Gagal mengirim: " + err.message);
                 }
             };
 
-            // FUNGSI UNTUK MENGHAPUS DATA
             const deleteItem = async (id) => {
-                const yakin = window.confirm("Apakah barang ini sudah ditemukan/dikembalikan dan ingin menghapus laporannya?");
+                const yakin = window.confirm("Hapus laporan ini?");
                 if (yakin) {
                     try {
                         await db.collection('reports').doc(id).delete();
@@ -97,16 +99,24 @@
                 }
             };
 
+            // Fungsi Format WA agar bisa diklik
+            const getWaLink = (num, itemTitle) => {
+                let cleanNum = num.replace(/[^0-9]/g, ""); // ambil angka saja
+                if (cleanNum.startsWith("0")) cleanNum = "62" + cleanNum.slice(1);
+                const text = encodeURIComponent(`Halo, saya melihat laporan kamu mengenai "${itemTitle}" di SmaLink. Apakah masih ada?`);
+                return `https://wa.me/${cleanNum}?text=${text}`;
+            };
+
             if (page === 'landing') {
                 return (
                     <div className="min-h-screen bg-indigo-600 flex items-center justify-center p-6">
                         <div className="bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl animate-pop text-center border-t-8 border-yellow-400">
-                            <h1 className="text-3xl font-black mb-2 text-indigo-900 tracking-tight italic">SmaLink</h1>
+                            <h1 className="text-4xl font-black mb-2 text-indigo-900 tracking-tight italic">SmaLink</h1>
                             <p className="text-slate-500 mb-8 text-sm font-medium italic italic">"Membantu Teman, Menemukan Harapan"</p>
                             <form onSubmit={(e) => { e.preventDefault(); setPage('dash'); }} className="space-y-4 text-left">
-                                <label className="text-xs font-bold text-slate-400 ml-2 uppercase">Nama Lengkap</label>
+                                <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Nama Lengkap</label>
                                 <input required placeholder="Ketik namamu..." className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100" onChange={e => setUser({...user, name: e.target.value})} />
-                                <label className="text-xs font-bold text-slate-400 ml-2 uppercase">Kelas</label>
+                                <label className="text-[10px] font-black text-slate-400 ml-2 uppercase">Kelas</label>
                                 <input required placeholder="Contoh: XII MIPA 1" className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100" onChange={e => setUser({...user, class: e.target.value})} />
                                 <button className="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-indigo-700 transition-all mt-4">MASUK</button>
                             </form>
@@ -117,8 +127,8 @@
 
             return (
                 <div className="min-h-screen">
-                    <nav className="bg-white border-b sticky top-0 z-50 px-6 py-4 flex justify-between items-center shadow-sm text-indigo-600">
-                        <div className="flex items-center gap-2 font-black text-2xl italic tracking-tighter">
+                    <nav className="bg-white border-b sticky top-0 z-50 px-6 py-4 flex justify-between items-center shadow-sm">
+                        <div className="flex items-center gap-2 font-black text-indigo-600 text-2xl italic tracking-tighter">
                             <Icon name="package" /> SMALINK
                         </div>
                         <button onClick={() => setShowModal(true)} className="bg-yellow-400 text-indigo-900 px-6 py-2 rounded-full font-black flex items-center gap-2 shadow-md hover:scale-105 transition-all">
@@ -126,41 +136,54 @@
                         </button>
                     </nav>
 
-                    <main className="max-w-5xl mx-auto p-6">
+                    <main className="max-w-6xl mx-auto p-6">
                         <h2 className="text-xl font-extrabold text-slate-800 mb-8">Daftar Laporan Barang</h2>
                         
                         {loading ? (
                             <div className="py-20 text-center text-indigo-500 font-bold animate-pulse italic">Menghubungkan ke Cloud...</div>
                         ) : items.length === 0 ? (
-                            <div className="py-20 bg-white rounded-[3rem] border-2 border-dashed border-slate-200 text-center">
-                                <p className="text-slate-400 font-bold italic">Belum ada laporan barang.</p>
-                            </div>
+                            <div className="py-20 bg-white rounded-[3rem] border-2 border-dashed border-slate-200 text-center text-slate-400 font-bold italic">Belum ada laporan.</div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {items.map(item => (
-                                    <div key={item.id} className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 animate-pop relative group">
-                                        {/* TOMBOL HAPUS (Hanya muncul jika di-hover atau di HP terlihat kecil) */}
-                                        <button 
-                                            onClick={() => deleteItem(item.id)}
-                                            className="absolute top-4 right-4 bg-red-50 text-red-400 p-2 rounded-xl hover:bg-red-500 hover:text-white transition-all shadow-sm"
-                                            title="Hapus Laporan"
-                                        >
-                                            <Icon name="trash-2" size={16} />
-                                        </button>
-
-                                        <div className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase mb-4 ${item.type === 'found' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
-                                            {item.type === 'found' ? 'Ditemukan' : 'Hilang'}
+                                    <div key={item.id} className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 animate-pop relative overflow-hidden flex flex-col justify-between">
+                                        <div>
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${item.type === 'found' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
+                                                    {item.type === 'found' ? 'Ditemukan' : 'Hilang'}
+                                                </div>
+                                                <button onClick={() => deleteItem(item.id)} className="text-slate-300 hover:text-red-500 transition-colors">
+                                                    <Icon name="trash-2" size={16} />
+                                                </button>
+                                            </div>
+                                            <h3 className="font-black text-lg mb-1 leading-tight">{item.title}</h3>
+                                            <p className="text-slate-500 text-xs mb-4 italic">"{item.desc}"</p>
                                         </div>
-                                        <h3 className="font-black text-lg mb-1 leading-tight pr-8">{item.title}</h3>
-                                        <p className="text-slate-500 text-xs mb-4 italic leading-relaxed">"{item.desc}"</p>
-                                        <div className="pt-4 border-t border-slate-50 flex flex-col gap-2">
-                                            <div className="text-[11px] font-bold text-slate-600 flex items-center gap-2">
-                                                <Icon name="map-pin" size={12} className="text-indigo-500" /> {item.loc}
+
+                                        <div className="pt-4 border-t border-slate-50">
+                                            <div className="space-y-2 mb-4">
+                                                <div className="text-[11px] font-bold text-slate-600 flex items-center gap-2">
+                                                    <Icon name="map-pin" size={12} className="text-indigo-500" /> {item.loc}
+                                                </div>
+                                                <div className="text-[11px] font-bold text-slate-600 flex items-center gap-2">
+                                                    <Icon name="user" size={12} className="text-indigo-500" /> {item.reporter}
+                                                </div>
                                             </div>
-                                            <div className="text-[11px] font-bold text-slate-600 flex items-center gap-2">
-                                                <Icon name="user" size={12} className="text-indigo-500" /> {item.reporter}
+                                            
+                                            {/* TOMBOL KONTAK */}
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {item.wa && (
+                                                    <a href={getWaLink(item.wa, item.title)} target="_blank" className="bg-green-100 text-green-700 py-2 rounded-xl text-[10px] font-black flex items-center justify-center gap-1 hover:bg-green-200 transition-all">
+                                                        <Icon name="phone" size={12} /> WHATSAPP
+                                                    </a>
+                                                )}
+                                                {item.ig && (
+                                                    <a href={`https://instagram.com/${item.ig.replace('@','')}`} target="_blank" className="bg-purple-100 text-purple-700 py-2 rounded-xl text-[10px] font-black flex items-center justify-center gap-1 hover:bg-purple-200 transition-all">
+                                                        <Icon name="instagram" size={12} /> INSTAGRAM
+                                                    </a>
+                                                )}
                                             </div>
-                                            <div className="text-[9px] text-slate-300 font-bold mt-1 uppercase italic tracking-tighter italic">{item.time}</div>
+                                            <div className="text-[9px] text-slate-300 font-bold mt-4 uppercase italic tracking-tighter">{item.time}</div>
                                         </div>
                                     </div>
                                 ))}
@@ -169,29 +192,38 @@
                     </main>
 
                     {showModal && (
-                        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-6 z-[60]">
-                            <form onSubmit={handleReport} className="bg-white w-full max-w-lg rounded-[3rem] p-10 shadow-2xl animate-pop border-4 border-indigo-50">
-                                <div className="flex justify-between items-center mb-8">
-                                    <h2 className="text-2xl font-black text-slate-800 tracking-tight">Buat Laporan</h2>
-                                    <button type="button" onClick={() => setShowModal(false)} className="bg-slate-100 p-2 rounded-full active:scale-90">
-                                        <Icon name="x" size={20} />
-                                    </button>
+                        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-4 z-[60] overflow-y-auto">
+                            <form onSubmit={handleReport} className="bg-white w-full max-w-lg rounded-[3rem] p-8 shadow-2xl animate-pop my-auto">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h2 className="text-2xl font-black text-slate-800">Lapor Barang</h2>
+                                    <button type="button" onClick={() => setShowModal(false)} className="bg-slate-100 p-2 rounded-full"><Icon name="x" size={20} /></button>
                                 </div>
-                                <div className="grid grid-cols-2 gap-4 mb-6">
-                                    <button type="button" onClick={() => setFormData({...formData, type: 'found'})} className={`py-4 rounded-2xl font-black text-xs ${formData.type === 'found' ? 'bg-green-500 text-white shadow-lg' : 'bg-slate-50 text-slate-400'}`}>DITEMUKAN</button>
-                                    <button type="button" onClick={() => setFormData({...formData, type: 'lost'})} className={`py-4 rounded-2xl font-black text-xs ${formData.type === 'lost' ? 'bg-red-500 text-white shadow-lg' : 'bg-slate-50 text-slate-400'}`}>HILANG</button>
+                                
+                                <div className="grid grid-cols-2 gap-3 mb-6">
+                                    <button type="button" onClick={() => setFormData({...formData, type: 'found'})} className={`py-3 rounded-2xl font-black text-xs ${formData.type === 'found' ? 'bg-green-500 text-white shadow-lg' : 'bg-slate-50 text-slate-400'}`}>DITEMUKAN</button>
+                                    <button type="button" onClick={() => setFormData({...formData, type: 'lost'})} className={`py-3 rounded-2xl font-black text-xs ${formData.type === 'lost' ? 'bg-red-500 text-white shadow-lg' : 'bg-slate-50 text-slate-400'}`}>HILANG</button>
                                 </div>
+
                                 <div className="space-y-4">
-                                    <label className="text-[10px] font-black text-slate-400 ml-2 uppercase tracking-widest">Barang Apa?</label>
-                                    <input required placeholder="Contoh: Kacamata Hitam" className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100 focus:border-indigo-500" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+                                    <input required placeholder="Nama Barang" className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100" value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})} />
+                                    <input required placeholder="Lokasi (Contoh: Lapangan)" className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100" value={formData.loc} onChange={e => setFormData({...formData, loc: e.target.value})} />
+                                    <textarea required placeholder="Ciri-ciri barang..." rows="2" className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100 resize-none" value={formData.desc} onChange={e => setFormData({...formData, desc: e.target.value})}></textarea>
                                     
-                                    <label className="text-[10px] font-black text-slate-400 ml-2 uppercase tracking-widest">Dimana?</label>
-                                    <input required placeholder="Contoh: Lapangan Basket" className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100 focus:border-indigo-500" value={formData.loc} onChange={e => setFormData({...formData, loc: e.target.value})} />
-                                    
-                                    <label className="text-[10px] font-black text-slate-400 ml-2 uppercase tracking-widest">Ciri Khusus</label>
-                                    <textarea required placeholder="Ada stiker di pojok kanan..." rows="3" className="w-full p-4 bg-slate-50 rounded-2xl outline-none border border-slate-100 resize-none focus:border-indigo-500" value={formData.desc} onChange={e => setFormData({...formData, desc: e.target.value})}></textarea>
+                                    <div className="pt-2 border-t">
+                                        <p className="text-[10px] font-black text-indigo-500 mb-3 uppercase tracking-widest">Informasi Kontak (Penting!)</p>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                            <div className="relative flex items-center">
+                                                <Icon name="phone" size={14} className="absolute left-4 text-slate-400" />
+                                                <input required type="tel" placeholder="No. WA (Aktif)" className="w-full pl-10 pr-4 py-4 bg-slate-50 rounded-2xl outline-none border border-slate-100 text-xs font-bold" value={formData.wa} onChange={e => setFormData({...formData, wa: e.target.value})} />
+                                            </div>
+                                            <div className="relative flex items-center">
+                                                <Icon name="instagram" size={14} className="absolute left-4 text-slate-400" />
+                                                <input placeholder="Username IG" className="w-full pl-10 pr-4 py-4 bg-slate-50 rounded-2xl outline-none border border-slate-100 text-xs font-bold" value={formData.ig} onChange={e => setFormData({...formData, ig: e.target.value})} />
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <button className="w-full bg-indigo-600 text-white font-black py-5 rounded-[2rem] shadow-2xl shadow-indigo-200 mt-8 active:scale-95 transition-all">KIRIM LAPORAN</button>
+                                <button className="w-full bg-indigo-600 text-white font-black py-5 rounded-[2rem] shadow-2xl mt-6 active:scale-95 transition-all">KIRIM LAPORAN</button>
                             </form>
                         </div>
                     )}
